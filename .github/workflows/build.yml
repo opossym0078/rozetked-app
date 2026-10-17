@@ -1,0 +1,28 @@
+name: Сборка APK
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q rozetked-app.zip -d src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Собрать
+        working-directory: src/rozetked-app
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+      - name: Выложить APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp src/rozetked-app/app/build/outputs/apk/release/app-release.apk rozetked.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest rozetked.apk --target "${{ github.sha }}" --title "Розеткед ${{ github.run_number }}" --notes "rozetked.apk" --latest
